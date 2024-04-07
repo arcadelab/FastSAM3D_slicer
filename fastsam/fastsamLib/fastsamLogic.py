@@ -94,21 +94,20 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
         # self.predictor.is_image_set = True
         print("Done")
     def generateaffine(self):
-        self.img = slicer.util.arrayFromVolume(self._parameterNode.GetNodeReference("tomosamInputVolume"))
-        self.origin = self._parameterNode.GetNodeReference("tomosamInputVolume").GetOrigin()
-        self.spacing = self._parameterNode.GetNodeReference("tomosamInputVolume").GetSpacing()
+        self.img = slicer.util.arrayFromVolume(self._parameterNode.GetNodeReference("fastsamInputVolume"))
+        self.origin = self._parameterNode.GetNodeReference("fastsamInputVolume").GetOrigin()
+        self.spacing = self._parameterNode.GetNodeReference("fastsamInputVolume").GetSpacing()
         self.affine = np.zeros((4,4))        
         dir = np.eye(3)
-        self._parameterNode.GetNodeReference("tomosamInputVolume").GetIJKToRASDirections(dir)
+        self._parameterNode.GetNodeReference("fastsamInputVolume").GetIJKToRASDirections(dir)
         for i in range(0,3):
             self.affine[i,i] = self.spacing[i] * dir[i,i]
         # self.affine[0,0] = -self.affine[0,0]
         # # self.affine[1,1] = -self.affine[1,1]
         self.affine[3,3] = 1
         self.affine[:3, 3] = self.origin
-        print(self.affine)
     def create_embeddings(self, output_filepath):
-        # self.img = slicer.util.arrayFromVolume(self._parameterNode.GetNodeReference("tomosamInputVolume"))
+        # self.img = slicer.util.arrayFromVolume(self._parameterNode.GetNodeReference("fastsamInputVolume"))
         # self.tinyvit = ImageEncoderViT3D(                                    #
         #     depth=6,
         #     embed_dim=768,
@@ -170,9 +169,9 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
 
     def read_img_embeddings(self, embeddings_filepath):
         
-        self.img = slicer.util.arrayFromVolume(self._parameterNode.GetNodeReference("tomosamInputVolume"))
+        self.img = slicer.util.arrayFromVolume(self._parameterNode.GetNodeReference("fastsamInputVolume"))
         ras2ijk = vtk.vtkMatrix4x4()
-        self._parameterNode.GetNodeReference("tomosamInputVolume").GetRASToIJKMatrix(ras2ijk)
+        self._parameterNode.GetNodeReference("fastsamInputVolume").GetRASToIJKMatrix(ras2ijk)
         self.voxel_sizes[:] = slicer.util.arrayFromVTKMatrix(ras2ijk).diagonal()[:3]
 
         print("Reading embeddings ... ", end="")
@@ -190,9 +189,9 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
 
     def pass_mask_to_slicer(self):
         slicer.util.updateSegmentBinaryLabelmapFromArray(self.mask,
-                                                         self._parameterNode.GetNodeReference("tomosamSegmentation"),
-                                                         self._parameterNode.GetParameter("tomosamCurrentSegment"),
-                                                         self._parameterNode.GetNodeReference("tomosamInputVolume"))
+                                                         self._parameterNode.GetNodeReference("fastsamSegmentation"),
+                                                         self._parameterNode.GetParameter("fastsamCurrentSegment"),
+                                                         self._parameterNode.GetNodeReference("fastsamInputVolume"))
     def findboxcontainallpoints(self):
         minpoints = []
         maxpoints = []
@@ -229,7 +228,6 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
                 pad_width[i] = l
         self.padded_data = np.pad(self.img, pad_width, 'constant')
         minpoints,maxpoints = self.findboxcontainallpoints()
-        print(self.padded_data.shape)
         #但裁完变成128x128x128
         inputimage = self.padded_data[minpoints[0]:maxpoints[0],minpoints[1]:maxpoints[1],minpoints[2]:maxpoints[2]]
         inputimage = inputimage[np.newaxis,np.newaxis,:,:,:]
@@ -245,7 +243,6 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
         exclude_points = adjusted_exclude_points
         # if first_freeze:
         #     self.backup_mask()
-        print('input' + str(inputimage.shape))
         if len(self.include_coords) != 0:
             prev_masks = self.torch.zeros_like(inputimage).to(self.device)
             low_res_masks = self.torch.nn.functional.interpolate(prev_masks.float(), size=(self.image_size//4,self.image_size//4,self.image_size//4))
@@ -277,8 +274,8 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
         else:
             self.undo()
     def backup_mask(self):
-        self.mask = slicer.util.arrayFromSegmentBinaryLabelmap(self._parameterNode.GetNodeReference("tomosamSegmentation"),
-                                                               self._parameterNode.GetParameter("tomosamCurrentSegment"))
+        self.mask = slicer.util.arrayFromSegmentBinaryLabelmap(self._parameterNode.GetNodeReference("fastsamSegmentation"),
+                                                               self._parameterNode.GetParameter("fastsamCurrentSegment"))
         self.mask_backup = self.mask.copy()
 
     def undo(self):

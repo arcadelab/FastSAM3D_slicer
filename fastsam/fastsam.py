@@ -16,8 +16,7 @@ class fastsam(ScriptedLoadableModule):
         self.parent.title = "fastSAM"
         self.parent.categories = ["Segmentation"]
         self.parent.dependencies = []
-        self.parent.contributors = ["Federico Semeraro (NASA); Alexandre Quintart (NASA)",
-                                    "Sergio Fraile Izquierdo (NASA); Joseph Ferguson (Stanford University)"]
+        self.parent.contributors = [""]
         self.parent.helpText = \
             """TomoSAM helps with the segmentation of 3D data from tomography or other imaging techniques using the Segment Anything Model (SAM).<br>
 <br>
@@ -45,7 +44,7 @@ Keyboard Shortcuts:
 <li>'r': render 3D view</li>
 <li>'z': undo interpolate or last mask</li>
 </ul>"""
-        self.parent.acknowledgementText = """If you find this work useful for your research or applications please cite <a href="https://arxiv.org/abs/2306.08609">our paper</a>"""
+        self.parent.acknowledgementText = """If you find this work useful for your research or applications please cite <a href="https://arxiv.org/abs/2403.09827">our paper</a>"""
 
 
 class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
@@ -76,7 +75,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def setup(self):
         ScriptedLoadableModuleWidget.setup(self)
         
-        uiWidget = slicer.util.loadUI(self.resourcePath('UI/tomosam.ui'))
+        uiWidget = slicer.util.loadUI(self.resourcePath('UI/fastsam.ui'))
         self.layout.addWidget(uiWidget)
         self.ui = slicer.util.childWidgetVariables(uiWidget)
         uiWidget.setMRMLScene(slicer.mrmlScene)
@@ -148,16 +147,16 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             self.logic.create_sam(self.Fastsam3D_weights_path, 'vit_b_ori')
             # self.updateLayout()
 
-        if self._parameterNode.GetNodeReferenceID("tomosamInputVolume") is None:
+        if self._parameterNode.GetNodeReferenceID("fastsamInputVolume") is None:
             volume_node = slicer.mrmlScene.GetFirstNodeByClass("vtkMRMLScalarVolumeNode")
             if volume_node is not None:
-                self._parameterNode.SetNodeReferenceID("tomosamInputVolume", volume_node.GetID())
+                self._parameterNode.SetNodeReferenceID("fastsamInputVolume", volume_node.GetID())
                 self.importPKL(volume_node)
 
         # Select default input nodes if nothing is selected yet to save a few clicks for the user
-        if not self._parameterNode.GetNodeReferenceID("tomosamIncludePoints"):
+        if not self._parameterNode.GetNodeReferenceID("fastsamIncludePoints"):
             markupsNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "include-points")
-            self._parameterNode.SetNodeReferenceID("tomosamIncludePoints", markupsNode.GetID())
+            self._parameterNode.SetNodeReferenceID("fastsamIncludePoints", markupsNode.GetID())
             markupsNode.GetDisplayNode().SetSelectedColor(0, 1, 0)
             markupsNode.GetDisplayNode().SetActiveColor(0, 1, 0)
             markupsNode.GetDisplayNode().SetTextScale(0)
@@ -165,9 +164,9 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             markupsNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent, self.onMarkupIncludePointPositionDefined)
             markupsNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionUndefinedEvent, self.onMarkupIncludePointPositionUndefined)
 
-        if not self._parameterNode.GetNodeReferenceID("tomosamExcludePoints"):
+        if not self._parameterNode.GetNodeReferenceID("fastsamExcludePoints"):
             markupsNode = slicer.mrmlScene.AddNewNodeByClass("vtkMRMLMarkupsFiducialNode", "exclude-points")
-            self._parameterNode.SetNodeReferenceID("tomosamExcludePoints", markupsNode.GetID())
+            self._parameterNode.SetNodeReferenceID("fastsamExcludePoints", markupsNode.GetID())
             markupsNode.GetDisplayNode().SetSelectedColor(1, 0, 0)
             markupsNode.GetDisplayNode().SetActiveColor(1, 0, 0)
             markupsNode.GetDisplayNode().SetTextScale(0)
@@ -175,14 +174,14 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             markupsNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionDefinedEvent, self.onMarkupExcludePointPositionDefined)
             markupsNode.AddObserver(slicer.vtkMRMLMarkupsNode.PointPositionUndefinedEvent, self.onMarkupExcludePointPositionUndefined)
 
-        if not self._parameterNode.GetNodeReferenceID("tomosamSegmentation"):
+        if not self._parameterNode.GetNodeReferenceID("fastsamSegmentation"):
             segmentationNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode', 'Segmentation')
             self.ui.segmentSelector.setCurrentNode(segmentationNode)
             self.ui.segmentsTable.setSegmentationNode(segmentationNode)
-            self._parameterNode.SetNodeReferenceID("tomosamSegmentation", segmentationNode.GetID())
+            self._parameterNode.SetNodeReferenceID("fastsamSegmentation", segmentationNode.GetID())
             segmentationNode.CreateDefaultDisplayNodes()
             segmentID = segmentationNode.GetSegmentation().AddEmptySegment()
-            self._parameterNode.SetParameter("tomosamCurrentSegment", segmentID)
+            self._parameterNode.SetParameter("fastsamCurrentSegment", segmentID)
 
         if self.segmentEditorWidget is None:
             self.segmentEditorWidget = slicer.qMRMLSegmentEditorWidget()
@@ -191,8 +190,8 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             slicer.mrmlScene.AddNode(self.segmentEditorNode)
             self.segmentEditorWidget.setMRMLSegmentEditorNode(self.segmentEditorNode)
 
-            self.segmentEditorWidget.setSegmentationNode(self._parameterNode.GetNodeReference("tomosamSegmentation"))
-            self.segmentEditorWidget.setSourceVolumeNode(self._parameterNode.GetNodeReference("tomosamInputVolume"))
+            self.segmentEditorWidget.setSegmentationNode(self._parameterNode.GetNodeReference("fastsamSegmentation"))
+            self.segmentEditorWidget.setSourceVolumeNode(self._parameterNode.GetNodeReference("fastsamInputVolume"))
             self.segmentEditorWidget.setActiveEffectByName("Fill between slices")
             self.effect = self.segmentEditorWidget.activeEffect()
 
@@ -208,19 +207,19 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self._updatingGUIFromParameterNode = True
 
         # Update node selectors and sliders
-        self.ui.comboVolumeNode.setCurrentNode(self._parameterNode.GetNodeReference("tomosamInputVolume"))
+        self.ui.comboVolumeNode.setCurrentNode(self._parameterNode.GetNodeReference("fastsamInputVolume"))
 
-        self.ui.markupsInclude.setCurrentNode(self._parameterNode.GetNodeReference("tomosamIncludePoints"))
-        self.ui.markupsExclude.setCurrentNode(self._parameterNode.GetNodeReference("tomosamExcludePoints"))
+        self.ui.markupsInclude.setCurrentNode(self._parameterNode.GetNodeReference("fastsamIncludePoints"))
+        self.ui.markupsExclude.setCurrentNode(self._parameterNode.GetNodeReference("fastsamExcludePoints"))
 
-        if self._parameterNode.GetNodeReferenceID("tomosamSegmentation"):
-            self._parameterNode.GetNodeReference("tomosamSegmentation").SetReferenceImageGeometryParameterFromVolumeNode(
-                self._parameterNode.GetNodeReference("tomosamInputVolume"))
-            self.ui.segmentsTable.setSegmentationNode(self._parameterNode.GetNodeReference("tomosamSegmentation"))
+        if self._parameterNode.GetNodeReferenceID("fastsamSegmentation"):
+            self._parameterNode.GetNodeReference("fastsamSegmentation").SetReferenceImageGeometryParameterFromVolumeNode(
+                self._parameterNode.GetNodeReference("fastsamInputVolume"))
+            self.ui.segmentsTable.setSegmentationNode(self._parameterNode.GetNodeReference("fastsamSegmentation"))
 
         if self.segmentEditorWidget:
-            self.segmentEditorWidget.setSegmentationNode(self._parameterNode.GetNodeReference("tomosamSegmentation"))
-            self.segmentEditorWidget.setSourceVolumeNode(self._parameterNode.GetNodeReference("tomosamInputVolume"))
+            self.segmentEditorWidget.setSegmentationNode(self._parameterNode.GetNodeReference("fastsamSegmentation"))
+            self.segmentEditorWidget.setSourceVolumeNode(self._parameterNode.GetNodeReference("fastsamInputVolume"))
 
         # All the GUI updates are done
         self._updatingGUIFromParameterNode = False
@@ -235,25 +234,25 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         wasModified = self._parameterNode.StartModify()  # Modify all properties in a single batch
 
-        if self.ui.comboVolumeNode.currentNodeID != self._parameterNode.GetNodeReferenceID("tomosamInputVolume"):
-            self._parameterNode.SetNodeReferenceID("tomosamInputVolume", self.ui.comboVolumeNode.currentNodeID)
-            self.importPKL(self._parameterNode.GetNodeReference("tomosamInputVolume"))
+        if self.ui.comboVolumeNode.currentNodeID != self._parameterNode.GetNodeReferenceID("fastsamInputVolume"):
+            self._parameterNode.SetNodeReferenceID("fastsamInputVolume", self.ui.comboVolumeNode.currentNodeID)
+            self.importPKL(self._parameterNode.GetNodeReference("fastsamInputVolume"))
 
-        if self._parameterNode.GetNodeReference("tomosamInputVolume") is not None:
-            slicer.util.setSliceViewerLayers(background=self._parameterNode.GetNodeReference("tomosamInputVolume"))
+        if self._parameterNode.GetNodeReference("fastsamInputVolume") is not None:
+            slicer.util.setSliceViewerLayers(background=self._parameterNode.GetNodeReference("fastsamInputVolume"))
 
-        self._parameterNode.SetNodeReferenceID("tomosamIncludePoints", self.ui.markupsInclude.currentNode().GetID())
-        self._parameterNode.SetNodeReferenceID("tomosamExcludePoints", self.ui.markupsExclude.currentNode().GetID())
+        self._parameterNode.SetNodeReferenceID("fastsamIncludePoints", self.ui.markupsInclude.currentNode().GetID())
+        self._parameterNode.SetNodeReferenceID("fastsamExcludePoints", self.ui.markupsExclude.currentNode().GetID())
 
-        self._parameterNode.SetNodeReferenceID("tomosamSegmentation", self.ui.segmentSelector.currentNodeID())
-        self._parameterNode.GetNodeReference("tomosamSegmentation").SetReferenceImageGeometryParameterFromVolumeNode(
-            self._parameterNode.GetNodeReference("tomosamInputVolume"))
-        self._parameterNode.SetParameter("tomosamCurrentSegment", self.ui.segmentSelector.currentSegmentID())
-        self.ui.segmentsTable.setSegmentationNode(self._parameterNode.GetNodeReference("tomosamSegmentation"))
+        self._parameterNode.SetNodeReferenceID("fastsamSegmentation", self.ui.segmentSelector.currentNodeID())
+        self._parameterNode.GetNodeReference("fastsamSegmentation").SetReferenceImageGeometryParameterFromVolumeNode(
+            self._parameterNode.GetNodeReference("fastsamInputVolume"))
+        self._parameterNode.SetParameter("fastsamCurrentSegment", self.ui.segmentSelector.currentSegmentID())
+        self.ui.segmentsTable.setSegmentationNode(self._parameterNode.GetNodeReference("fastsamSegmentation"))
 
         if self.segmentEditorWidget:
-            self.segmentEditorWidget.setSegmentationNode(self._parameterNode.GetNodeReference("tomosamSegmentation"))
-            self.segmentEditorWidget.setSourceVolumeNode(self._parameterNode.GetNodeReference("tomosamInputVolume"))
+            self.segmentEditorWidget.setSegmentationNode(self._parameterNode.GetNodeReference("fastsamSegmentation"))
+            self.segmentEditorWidget.setSourceVolumeNode(self._parameterNode.GetNodeReference("fastsamInputVolume"))
 
         self._parameterNode.EndModify(wasModified)
 
@@ -292,7 +291,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         if caller.GetNumberOfControlPoints() == 0:
             self.unfreezeSlice()
             self.actual_remove_click = False
-            self._parameterNode.GetNodeReference("tomosamExcludePoints").RemoveAllControlPoints()
+            self._parameterNode.GetNodeReference("fastsamExcludePoints").RemoveAllControlPoints()
             self.actual_remove_click = True
             self.logic.exclude_coords = {}
 
@@ -305,7 +304,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onMarkupExcludePointPositionDefined(self, caller, event):
 
         slice_dir = self.findClickedSliceWindow()
-        if (self._parameterNode.GetNodeReference("tomosamIncludePoints").GetNumberOfControlPoints() == 0 or
+        if (self._parameterNode.GetNodeReference("fastsamIncludePoints").GetNumberOfControlPoints() == 0 or
                 slice_dir is None or self.logic.slice_direction != slice_dir):
             self.actual_remove_click = False
             caller.RemoveNthControlPoint(caller.GetDisplayNode().GetActiveControlPoint())
@@ -391,16 +390,16 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
     def clearPoints(self):
         self.actual_remove_click = False
-        self._parameterNode.GetNodeReference("tomosamIncludePoints").RemoveAllControlPoints()
+        self._parameterNode.GetNodeReference("fastsamIncludePoints").RemoveAllControlPoints()
         self.logic.include_coords = {}
         self.actual_remove_click = False
-        self._parameterNode.GetNodeReference("tomosamExcludePoints").RemoveAllControlPoints()
+        self._parameterNode.GetNodeReference("fastsamExcludePoints").RemoveAllControlPoints()
         self.logic.exclude_coords = {}
 
     def onPushMaskAccept(self):
         self.mask_accepted = True
         self.actual_remove_click = False
-        self._parameterNode.GetNodeReference("tomosamIncludePoints").RemoveAllControlPoints()
+        self._parameterNode.GetNodeReference("fastsamIncludePoints").RemoveAllControlPoints()
         self.logic.include_coords = {}
 
         # only add mask_location for interpolation if mask has been created
@@ -422,17 +421,17 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.clearPoints()
         self.logic.mask_locations = set()
         self.logic.interp_slice_direction = set()
-        segmentID = self._parameterNode.GetNodeReference("tomosamSegmentation").GetSegmentation().AddEmptySegment()
-        self._parameterNode.SetParameter("tomosamCurrentSegment", segmentID)
+        segmentID = self._parameterNode.GetNodeReference("fastsamSegmentation").GetSegmentation().AddEmptySegment()
+        self._parameterNode.SetParameter("fastsamCurrentSegment", segmentID)
         self.ui.segmentSelector.setCurrentSegmentID(segmentID)
         self.logic.mask.fill(0)
 
     def onPushSegmentRemove(self):
-        if len(self._parameterNode.GetNodeReference("tomosamSegmentation").GetSegmentation().GetSegmentIDs()) <= 1:
+        if len(self._parameterNode.GetNodeReference("fastsamSegmentation").GetSegmentation().GetSegmentIDs()) <= 1:
             slicer.util.errorDisplay("Need to have at least one segment")
             return
-        self._parameterNode.GetNodeReference("tomosamSegmentation").RemoveSegment(self._parameterNode.GetParameter("tomosamCurrentSegment"))
-        self.ui.segmentSelector.setCurrentSegmentID(self._parameterNode.GetNodeReference("tomosamSegmentation").GetSegmentation().GetSegmentIDs()[-1])
+        self._parameterNode.GetNodeReference("fastsamSegmentation").RemoveSegment(self._parameterNode.GetParameter("fastsamCurrentSegment"))
+        self.ui.segmentSelector.setCurrentSegmentID(self._parameterNode.GetNodeReference("fastsamSegmentation").GetSegmentation().GetSegmentIDs()[-1])
 
     def onPushSAMweights(self):
         if self.checkFastSAMdownload():
@@ -479,7 +478,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     #     return True
 
     def checkVolume(self):
-        if not self._parameterNode.GetNodeReferenceID("tomosamInputVolume"):
+        if not self._parameterNode.GetNodeReferenceID("fastsamInputVolume"):
             slicer.util.errorDisplay("Select a volume")
             return False
         else:
@@ -502,7 +501,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     #     if not self.checkVolume() or not self.checkSAM():
     #         return
 
-    #     volume_node = self._parameterNode.GetNodeReference("tomosamInputVolume")
+    #     volume_node = self._parameterNode.GetNodeReference("fastsamInputVolume")
     #     storageNode = volume_node.GetStorageNode()
     #     if storageNode is not None:  # loaded via drag-drop
     #         filepath = storageNode.GetFullNameFromFileName()
@@ -541,7 +540,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     #     self.lm.sliceWidget(self.logic.slice_direction).sliceController().setSliceVisible(self.slice_visible)
 
     # def onPushRender3d(self):
-    #     self._parameterNode.GetNodeReference("tomosamSegmentation").CreateClosedSurfaceRepresentation()
+    #     self._parameterNode.GetNodeReference("fastsamSegmentation").CreateClosedSurfaceRepresentation()
 
     def onPushInitializeInterp(self):
         if len(self.logic.interp_slice_direction) > 1:
@@ -554,16 +553,16 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.logic.backup_mask()
 
         # when segments not visible, interpolation won't happen --> hide everything except current segment
-        for segmentID in self._parameterNode.GetNodeReference("tomosamSegmentation").GetSegmentation().GetSegmentIDs():
-            if segmentID != self._parameterNode.GetParameter("tomosamCurrentSegment"):
-                self._parameterNode.GetNodeReference("tomosamSegmentation").GetDisplayNode().SetSegmentVisibility(segmentID, False)
+        for segmentID in self._parameterNode.GetNodeReference("fastsamSegmentation").GetSegmentation().GetSegmentIDs():
+            if segmentID != self._parameterNode.GetParameter("fastsamCurrentSegment"):
+                self._parameterNode.GetNodeReference("fastsamSegmentation").GetDisplayNode().SetSegmentVisibility(segmentID, False)
 
         self.effect.self().onPreview()
         self.effect.self().onApply()
 
-        for segmentID in self._parameterNode.GetNodeReference("tomosamSegmentation").GetSegmentation().GetSegmentIDs():
-            if segmentID != self._parameterNode.GetParameter("tomosamCurrentSegment"):
-                self._parameterNode.GetNodeReference("tomosamSegmentation").GetDisplayNode().SetSegmentVisibility(segmentID, True)
+        for segmentID in self._parameterNode.GetNodeReference("fastsamSegmentation").GetSegmentation().GetSegmentIDs():
+            if segmentID != self._parameterNode.GetParameter("fastsamCurrentSegment"):
+                self._parameterNode.GetNodeReference("fastsamSegmentation").GetDisplayNode().SetSegmentVisibility(segmentID, True)
 
     @vtk.calldata_type(vtk.VTK_OBJECT)
     def onNodeAdded(self, caller, event, calldata):
@@ -591,7 +590,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def activateIncludePoints(self):
         interactionNode = slicer.app.applicationLogic().GetInteractionNode()
         selectionNode = slicer.app.applicationLogic().GetSelectionNode()
-        selectionNode.SetActivePlaceNodeID(self._parameterNode.GetNodeReferenceID("tomosamIncludePoints"))
+        selectionNode.SetActivePlaceNodeID(self._parameterNode.GetNodeReferenceID("fastsamIncludePoints"))
         interactionNode.SetCurrentInteractionMode(interactionNode.Place)
 
     def activateExcludePoints(self):
@@ -600,21 +599,21 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         selectionNode.SetActivePlaceNodeID(self._parameterNode.GetNodeReferenceID("tomosamExcludePoints"))
         interactionNode.SetCurrentInteractionMode(interactionNode.Place)
 
-    def onRadioOrient(self):
-        if self.ui.radioButton_hor.isChecked():
-            self.orientation = 'horizontal'
-        else:
-            self.orientation = 'vertical'
-        self.updateLayout()
+    # def onRadioOrient(self):
+    #     if self.ui.radioButton_hor.isChecked():
+    #         self.orientation = 'horizontal'
+    #     else:
+    #         self.orientation = 'vertical'
+    #     self.updateLayout()
 
-    def onRadioView(self):
-        if self.ui.radioButton_red.isChecked():
-            self.view = 'Red'
-        elif self.ui.radioButton_green.isChecked():
-            self.view = 'Green'
-        else:
-            self.view = 'Yellow'
-        self.updateLayout()
+    # def onRadioView(self):
+    #     if self.ui.radioButton_red.isChecked():
+    #         self.view = 'Red'
+    #     elif self.ui.radioButton_green.isChecked():
+    #         self.view = 'Green'
+    #     else:
+    #         self.view = 'Yellow'
+    #     self.updateLayout()
 
     def createLayouts(self):
         orientations = ['horizontal', 'vertical']
@@ -640,15 +639,15 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
                 self.lm.layoutLogic().GetLayoutNode().AddLayoutDescription(self.layout_id, customLayout)
                 self.layout_id += 1
 
-    def updateLayout(self):
-        self.layout_id = self.layouts[(self.orientation, self.view)]
+    # def updateLayout(self):
+    #     self.layout_id = self.layouts[(self.orientation, self.view)]
 
-        # If the layout ID doesn't exist, use a default layout
-        if self.layout_id is None:
-            defaultLayout = self.layouts[('horizontal', 'Red')]
-            if defaultLayout is None:
-                return
-            self.layout_id = defaultLayout
+    #     # If the layout ID doesn't exist, use a default layout
+    #     if self.layout_id is None:
+    #         defaultLayout = self.layouts[('horizontal', 'Red')]
+    #         if defaultLayout is None:
+    #             return
+    #         self.layout_id = defaultLayout
 
         # self.lm.setLayout(self.layout_id)
         # self.logic.slice_direction = self.view
