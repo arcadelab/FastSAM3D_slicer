@@ -4,6 +4,8 @@
 \
 [code](https://github.com/arcadelab/FastSAM3D)
 \
+[demo](https://youtu.be/oJ9ZhnPWqSs)
+\
 [ARCADE lab](https://arcade.cs.jhu.edu/), [Johns Hopkins University](https://www.jhu.edu/)
 \
 ![Results](utils/results.PNG)
