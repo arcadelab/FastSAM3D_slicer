@@ -34,14 +34,14 @@ Don't forget to use the provided resample.py file to do resample for medical ima
 ## How to Use <a name="how-to-use"></a>
 step 1: Download the file and compress it.
 
-step 2: open 3D slicer and open extension manager, download the pytorch extension and restart the slicer.
+step 2: open the 3D slicer and open the extension manager, download the pytorch extension, and restart the slicer.
 ![step21](utils/step21.PNG)
 ![step22](utils/step22.PNG)
-step 3: open extension wizard in 3D slicer.
+step 3: open the extension wizard in the 3D slicer.
 ![step3](utils/step3.PNG)
-step 4: click the open extension and choose the folder contain the extension in step 1.
+step 4: click the select extension and choose the compressed file in step 1.
 ![step4](utils/step4.PNG)
-step 5: the extension now will be available in here
+step 5: the extension will now be available here
 ![step5](utils/step5.PNG)
 ### Features <a name="features"></a>
 - 3 View Inference
