@@ -30,6 +30,7 @@ Why FastSAM3D and FastSAM3D_slicer?
 * And it's really fast! 
 ## Before You Try <a name="before-you-try"></a>
 Make sure you have more than 3GB storage to download model weights and install pytorch.
+Don't forget to use the provided resample.py file to do resample for medical image. 
 ## How to Use <a name="how-to-use"></a>
 step 1: Download the file and compress it.
 
