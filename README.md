@@ -6,7 +6,7 @@
 \
 [ARCADE lab](https://arcade.cs.jhu.edu/), [Johns Hopkins University](https://www.jhu.edu/)
 \
-![Results](results.PNG)
+![Results](utils/results.PNG)
 
 # Table of contents
 - [Fast Segment-anything model in 3D medical image (FastSAM3D): A 3D Slicer extension to FastSAM3D](#fast-segment-anything-model-in-3d-medical-image-fastsam3d-a-3d-slicer-extension-for-fastsam3d)
@@ -34,14 +34,14 @@ Make sure you have more than 3GB storage to download model weights and install p
 step 1: Download the file and compress it.
 
 step 2: open 3D slicer and open extension manager, download the pytorch extension and restart the slicer.
-![step21](step21.PNG)
-![step22](step22.PNG)
+![step21](utils/step21.PNG)
+![step22](utils/step22.PNG)
 step 3: open extension wizard in 3D slicer.
-![step3](step3.PNG)
+![step3](utils/step3.PNG)
 step 4: click the open extension and choose the folder contain the extension in step 1.
-![step4](step4.PNG)
+![step4](utils/step4.PNG)
 step 5: the extension now will be available in here
-![step5](step5.PNG)
+![step5](utils/step5.PNG)
 ### Features <a name="features"></a>
 - 3 View Inference
 - Data type
