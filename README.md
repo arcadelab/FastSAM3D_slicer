@@ -1,15 +1,15 @@
-# Fast Segment anything model in 3D medical image (FastSAM3D): A 3D Slicer extension for FastSAM3D
+# Fast Segment-anything model in 3D medical image (FastSAM3D): A 3D Slicer extension for FastSAM3D.
 
-[FastSAM3D paper](https://arxiv.org/abs/2403.09827)
+[paper](https://arxiv.org/abs/2403.09827)
 \
-[FastSAM3D code](https://github.com/arcadelab/FastSAM3D)
+[code](https://github.com/arcadelab/FastSAM3D)
 \
 [ARCADE lab](https://arcade.cs.jhu.edu/), [Johns Hopkins University](https://www.jhu.edu/)
 \
 ![Results](results.PNG)
-<!-- [![The Video](https://github.com/bingogome/samm/blob/main/thumbnail.png)](https://youtu.be/tZRG7JljEBU) -->
+
 # Table of contents
-- [Fast Segment anything model in 3D medical image (FastSAM3D): A 3D Slicer extension to FastSAM3D](#segment-any-medical-model-samm-a-3d-slicer-integration-to-metas-sam)
+- [Fast Segment-anything model in 3D medical image (FastSAM3D): A 3D Slicer extension to FastSAM3D](#fast-segment-anything-model-in-3d-medical-image-fastsam3d-a-3d-slicer-extension-for-fastsam3d)
 - [Table of contents](#table-of-contents)
   - [Introduction ](#introduction-)
   - [Before You Try ](#before-you-try-)
