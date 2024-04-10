@@ -2,7 +2,7 @@
 
 [paper](https://arxiv.org/abs/2403.09827)
 \
-[code](https://github.com/arcadelab/FastSAM3D)
+[FastSAM3D code](https://github.com/arcadelab/FastSAM3D)
 \
 [demo](https://youtu.be/oJ9ZhnPWqSs)
 \
