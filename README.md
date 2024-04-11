@@ -1,4 +1,4 @@
-# Fast Segment-anything model in 3D medical image (FastSAM3D): A 3D Slicer extension for FastSAM3D.
+# Fast Segment Anything Model in 3D Medical Image (FastSAM3D): A 3D Slicer Extension for FastSAM3D
 
 [paper](https://arxiv.org/abs/2403.09827)
 \
