@@ -69,6 +69,8 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.download_location = qt.QStandardPaths.writableLocation(qt.QStandardPaths.DownloadLocation)
         self.Fastsam3D_weights_path = os.path.join(self.download_location, "FastSAM3D.pth")
         self.SAMMed3D_weights_path = os.path.join(self.download_location,"SAM_Med3D_turbo.pth")
+        self.MedSAM_weights_path = os.path.join(self.download_location, "medsam_vit_b.pth")
+        self.SAMMed2D_weights_path = os.path.join(self.download_location, "sam-med2d_b.pth")
         self.layouts = {}  # Initialize an empty dictionary for layouts
         self.createLayouts()  # Call the method to create layouts
 
@@ -113,6 +115,8 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.pushUndo.connect("clicked(bool)", self.onPushUndo)
         self.ui.radioButton_FastSAM3D.connect("clicked(bool)", self.buildFastSAM3D)
         self.ui.radioButton_SAMMed3D.connect("clicked(bool)", self.buildSAMMed3D)
+        self.ui.radioButton_SAMMed2D.connect("clicked(bool)", self.buildSAMMed2D)
+        self.ui.radioButton_MedSAM.connect("clicked(bool)", self.buildMedSAM)
 
         shortcuts = [
             ("i", lambda: self.activateIncludePoints()),
@@ -144,7 +148,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
 
         self._parameterNode.root_path = os.path.dirname(os.path.dirname(os.path.dirname(self.resourcePath(''))))
         if self.logic.sam is None:
-            self.logic.create_sam(self.Fastsam3D_weights_path, 'vit_b_ori')
+            self.logic.create_sam(self.Fastsam3D_weights_path, "FastSAM3D")
             # self.updateLayout()
 
         if self._parameterNode.GetNodeReferenceID("fastsamInputVolume") is None:
@@ -266,11 +270,11 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onMarkupIncludePointPositionDefined(self, caller, event):
 
         slice_dir = self.findClickedSliceWindow()
-        if slice_dir is None:
-            self.actual_remove_click = False
-            self.mask_accepted = True
-            caller.RemoveNthControlPoint(caller.GetDisplayNode().GetActiveControlPoint())
-            return
+        # if slice_dir is None:
+        #     self.actual_remove_click = False
+        #     self.mask_accepted = True
+        #     caller.RemoveNthControlPoint(caller.GetDisplayNode().GetActiveControlPoint())
+        #     return
 
         if caller.GetNumberOfControlPoints() == 1 and not self.slice_frozen:
             self.logic.slice_direction = slice_dir
@@ -318,13 +322,13 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def addPoint(self, caller, stored_coords):
         self.logic.generateaffine()
         point_index = caller.GetDisplayNode().GetActiveControlPoint()
-        print(point_index)
         
         if not self.checkVolume() or not self.checkSAM():
             self.actual_remove_click = False
             caller.RemoveNthControlPoint(point_index)
             return
         coords = caller.GetNthControlPointPosition(point_index)
+        
         coords = np.array([coords[0],coords[1],coords[2],1])
         coords = np.round(np.linalg.inv(self.logic.affine) @ np.array(coords).T)
         caller.SetNthControlPointLocked(point_index, True)
@@ -442,6 +446,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             print("Done")
         else:
             slicer.util.infoDisplay(f"FastSAM3D weights already found at {self.Fastsam3D_weights_path}(1.1G, it may take several minutes)...")
+        
         if self.checkSAMMeddownload():
             slicer.util.delayDisplay(f"Downloading SAMMed3D weights to {self.SAMMed3D_weights_path}")
             print("Downloading SAMMed3D weights ... ", end='')
@@ -450,6 +455,25 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             print("Done")
         else:
             slicer.util.infoDisplay(f"MedSAM3D weights already found at {self.SAMMed3D_weights_path}")
+        
+        if self.checkMedSAMdownload():
+            slicer.util.delayDisplay(f"Downloading MedSAM weights to {self.MedSAM_weights_path}")
+            print("Downloading MedSAM weights ... ", end='')
+            url = "https://www.googleapis.com/drive/v3/files/1UAmWL88roYR7wKlnApw5Bcuzf2iQgk6_?alt=media&key=AIzaSyDIQ5koL_iOuj5vIxaRKtUwba70-DH5nTc"
+            urllib.request.urlretrieve(url, self.MedSAM_weights_path)
+            print("Done")
+        else:
+            slicer.util.infoDisplay(f"MedSAM3D weights already found at {self.MedSAM_weights_path}")
+        
+        if self.checkSAMMed2Ddownload():
+            slicer.util.delayDisplay(f"Downloading MedSAM weights to {self.SAMMed2D_weights_path}")
+            print("Downloading MedSAM weights ... ", end='')
+            url = "https://www.googleapis.com/drive/v3/files/1ARiB5RkSsWmAB_8mqWnwDF8ZKTtFwsjl?alt=media&key=AIzaSyDIQ5koL_iOuj5vIxaRKtUwba70-DH5nTc"
+            urllib.request.urlretrieve(url, self.SAMMed2D_weights_path)
+            print("Done")
+        else:
+            slicer.util.infoDisplay(f"MedSAM3D weights already found at {self.SAMMed2D_weights_path}")
+            
 
     def checkFastSAMdownload(self):
         return not os.path.exists(self.Fastsam3D_weights_path)  or not os.path.isfile(self.Fastsam3D_weights_path) 
@@ -457,11 +481,31 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def checkSAMMeddownload(self):
         return not os.path.exists(self.SAMMed3D_weights_path) or not os.path.isfile(self.SAMMed3D_weights_path)
     
+    def checkMedSAMdownload(self):
+        return not os.path.exists(self.MedSAM_weights_path) or not os.path.isfile(self.MedSAM_weights_path)
+    
+    def checkSAMMed2Ddownload(self):
+        return not os.path.exists(self.SAMMed2D_weights_path) or not os.path.isfile(self.SAMMed2D_weights_path)
+    
     def buildFastSAM3D(self):
-        self.logic.create_sam(self.Fastsam3D_weights_path, 'vit_b_ori')
+        self.logic.dimension = 3
+        self.logic.image_size = 128
+        self.logic.create_sam(self.Fastsam3D_weights_path, "FastSAM3D")
     
     def buildSAMMed3D(self):
-        self.logic.create_sam(self.SAMMed3D_weights_path, 'vit_b_orignal')
+        self.logic.dimension = 3
+        self.logic.image_size = 128
+        self.logic.create_sam(self.SAMMed3D_weights_path, "SAMMed3D")
+        
+    def buildSAMMed2D(self):
+        self.logic.dimension = 2
+        self.logic.image_size = 256
+        self.logic.create_sam(self.SAMMed2D_weights_path, "SAMMed2D")
+    
+    def buildMedSAM(self):
+        self.logic.dimension = 2
+        self.logic.image_size = 1024
+        self.logic.create_sam(self.MedSAM_weights_path, "MedSAM")
     
     def checkSAM(self):
         if self.logic.sam is None:

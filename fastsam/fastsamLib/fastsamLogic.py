@@ -27,10 +27,12 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
 
         self.emb_slice_d = {'Yellow': 2, 'Green': 1, 'Red': 0}
         self.slice_direction = 'Red'
+        self.dimension = 3
 
         self.mask_locations = set()
         self.interp_slice_direction = set()
         self.mask_backup = None
+        self.low_res_masks = None
 
     def setupPythonRequirements(self):
 
@@ -69,7 +71,6 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
 
     def create_sam(self, sam_weights_path, modeltype):
         slicer.util.delayDisplay("Loading SAM ... ")
-
         if not self.setupPythonRequirements():
             return
         from segment_anything.build_sam3D import sam_model_registry3D
@@ -192,21 +193,21 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
                                                          self._parameterNode.GetNodeReference("fastsamSegmentation"),
                                                          self._parameterNode.GetParameter("fastsamCurrentSegment"),
                                                          self._parameterNode.GetNodeReference("fastsamInputVolume"))
-    def findboxcontainallpoints(self):
+    def findboxcontainallpoints(self,include_coords,exclude_coords,padded_data):
         minpoints = []
         maxpoints = []
-        for i in range(0,3):
+        for i in range(0,self.dimension):
             points = []
-            for coords in self.include_coords.values():
+            for coords in include_coords:
                 points.append(coords[i])
-            for coords in self.exclude_coords.values():
+            for coords in exclude_coords:
                 points.append(coords[i])
             maxp = np.max(points)
             minp = np.min(points)
             if maxp-minp > self.image_size:
                 slicer.util.errorDisplay(f"points outside the embedding range, please reselect the points")
                 return
-            bound = self.padded_data.shape[i]
+            bound = padded_data.shape[i]
             crop = int((self.image_size-(maxp-minp))/2)
             minpoints.append(int(minp - min(minp,crop) - crop + min((bound-maxp),crop)))
             maxpoints.append(int(maxp + min((bound-maxp),crop) + crop-min(minp,crop)))
@@ -216,67 +217,167 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
                 else:
                     maxpoints[i] += 1
         return minpoints,maxpoints
-            
+    
+    def reverse_padd(self, padding):
+        return self.mask[padding[0][0]:self.mask.shape[0] - padding[0][1],padding[1][0]:self.mask.shape[1] - padding[1][1],padding[2][0]:self.mask.shape[2] - padding[2][1]]            
         
     def get_mask(self, first_freeze):
-        target_shape = [self.image_size,self.image_size,self.image_size]
-        pad_width = [(max(0, target_shape[i] - self.img.shape[i]) // 2, max(0, target_shape[i] - self.img.shape[i]) // 2)for i in range(3)]
-        for i in range(0,3):
-            if pad_width[i][0] + pad_width[i][1] + self.img.shape[i] < target_shape[i]:
-                l = list(pad_width[i])
-                l[0] += 1
-                pad_width[i] = l
-        self.padded_data = np.pad(self.img, pad_width, 'constant')
-        minpoints,maxpoints = self.findboxcontainallpoints()
-        #但裁完变成128x128x128
-        inputimage = self.padded_data[minpoints[0]:maxpoints[0],minpoints[1]:maxpoints[1],minpoints[2]:maxpoints[2]]
-        inputimage = inputimage[np.newaxis,np.newaxis,:,:,:]
-        inputimage = self.torch.as_tensor(inputimage,dtype = self.torch.float32)
-        #根据源图片做的坐标。include根据input偏移了，include points exclude points 根据才出来的坐标重新定位
-        include_points = [[coords[0], coords[1],coords[2]] for coords in self.include_coords.values()]
-        # print(self.img[0,0,include_points[0],include_points[1],include_points[2]]) 
-        exclude_points = [[coords[0], coords[1],coords[2]] for coords in self.exclude_coords.values()]
-        offsets = [minpoints[i] for i in range(3)]
-        adjusted_include_points = [[coord - offset for coord, offset in zip(point, offsets)] for point in include_points]
-        adjusted_exclude_points = [[coord - offset for coord, offset in zip(point, offsets)] for point in exclude_points]
-        include_points = adjusted_include_points
-        exclude_points = adjusted_exclude_points
-        # if first_freeze:
-        #     self.backup_mask()
-        if len(self.include_coords) != 0:
-            prev_masks = self.torch.zeros_like(inputimage).to(self.device)
-            low_res_masks = self.torch.nn.functional.interpolate(prev_masks.float(), size=(self.image_size//4,self.image_size//4,self.image_size//4))
-            image_embedding = self.sam.image_encoder(inputimage.to(self.device))
-            points = self.torch.as_tensor(np.array(include_points + exclude_points)).to(self.device)
-            points = points[None,:,:]
-            label = self.torch.as_tensor(np.array([1] * len(include_points) + [0] * len(exclude_points))).to(self.device)
-            label = label[None,:]
-            sparse_embeddings, dense_embeddings = self.sam.prompt_encoder(
-                    points=[points,label],
-                    boxes=None,
-                    masks = low_res_masks
-                )
-            low_res_masks, _ = self.sam.mask_decoder(
-                    image_embeddings=image_embedding.to(self.device), # (B, 384, 64, 64, 64)
-                    image_pe=self.sam.prompt_encoder.get_dense_pe(), # (1, 384, 64, 64, 64)
-                    sparse_prompt_embeddings=sparse_embeddings, # (B, 2, 384)
-                    dense_prompt_embeddings=dense_embeddings, # (B, 384, 64, 64, 64)
-                    multimask_output=False,
+        target_shape = [self.image_size]*self.dimension
+        if self.dimension == 3:
+            pad_width = [(max(0, target_shape[i] - self.img.shape[i]) // 2, max(0, target_shape[i] - self.img.shape[i]) // 2)for i in range(self.dimension)]
+            for i in range(0,self.dimension):
+                if pad_width[i][0] + pad_width[i][1] + self.img.shape[i] < target_shape[i]:
+                    l = list(pad_width[i])
+                    l[0] += 1
+                    pad_width[i] = l            
+            include_points = [[coords[0], coords[1],coords[2]] for coords in self.include_coords.values()]
+            # print(self.img[0,0,include_points[0],include_points[1],include_points[2]]) 
+            exclude_points = [[coords[0], coords[1],coords[2]] for coords in self.exclude_coords.values()]
+            offsets = [pad_width[i][0] for i in range(self.dimension)]
+            adjusted_include_points = [[coord + offset for coord, offset in zip(point, offsets)] for point in include_points]
+            adjusted_exclude_points = [[coord + offset for coord, offset in zip(point, offsets)] for point in exclude_points]
+            include_points = adjusted_include_points
+            exclude_points = adjusted_exclude_points
+            padded_data = np.pad(self.img, pad_width, 'constant')        
+            minpoints,maxpoints = self.findboxcontainallpoints(include_points,exclude_points,padded_data)
+            #但裁完变成128x128x128
+            inputimage = padded_data[minpoints[0]:maxpoints[0],minpoints[1]:maxpoints[1],minpoints[2]:maxpoints[2]]
+            inputimage = inputimage[np.newaxis,np.newaxis,:,:,:]
+            inputimage = self.torch.as_tensor(inputimage,dtype = self.torch.float32)
+            #根据源图片做的坐标。include根据input偏移了，include points exclude points 根据才出来的坐标重新定位
+
+            offsets = [minpoints[i] for i in range(self.dimension)]
+            adjusted_include_points = [[coord - offset for coord, offset in zip(point, offsets)] for point in include_points]
+            adjusted_exclude_points = [[coord - offset for coord, offset in zip(point, offsets)] for point in exclude_points]
+            include_points = adjusted_include_points
+            exclude_points = adjusted_exclude_points
+            # if first_freeze:
+            #     self.backup_mask()
+            if len(self.include_coords) != 0:
+                prev_masks = self.torch.zeros_like(inputimage).to(self.device)
+                low_res_masks = self.torch.nn.functional.interpolate(prev_masks.float(), size=(self.image_size//4,self.image_size//4,self.image_size//4))
+                image_embedding = self.sam.image_encoder(inputimage.to(self.device))
+                points = self.torch.as_tensor(np.array(include_points + exclude_points)).to(self.device)
+                points = points[None,:,:]
+                label = self.torch.as_tensor(np.array([1] * len(include_points) + [0] * len(exclude_points))).to(self.device)
+                label = label[None,:]
+                sparse_embeddings, dense_embeddings = self.sam.prompt_encoder(
+                        points=[points,label],
+                        boxes=None,
+                        masks = low_res_masks
                     )
-            prev_masks = self.torch.nn.functional.interpolate(low_res_masks, size=inputimage.shape[-3:], mode='trilinear', align_corners=False)
-            medsam_seg_prob = self.torch.sigmoid(prev_masks)  # (B, 1, 64, 64, 64)
-            # convert prob to mask
-            medsam_seg_prob = medsam_seg_prob.cpu().detach().numpy().squeeze()
-            medsam_seg = (medsam_seg_prob > 0.5).astype(np.uint8)
-            self.mask = np.zeros(self.padded_data.shape)
-            self.mask[minpoints[0]:maxpoints[0],minpoints[1]:maxpoints[1],minpoints[2]:maxpoints[2]] = medsam_seg
-            self.pass_mask_to_slicer()
+                low_res_masks, _ = self.sam.mask_decoder(
+                        image_embeddings=image_embedding.to(self.device), # (B, 384, 64, 64, 64)
+                        image_pe=self.sam.prompt_encoder.get_dense_pe(), # (1, 384, 64, 64, 64)
+                        sparse_prompt_embeddings=sparse_embeddings, # (B, 2, 384)
+                        dense_prompt_embeddings=dense_embeddings, # (B, 384, 64, 64, 64)
+                        multimask_output=False,
+                        )
+                prev_masks = self.torch.nn.functional.interpolate(low_res_masks, size=inputimage.shape[-3:], mode='trilinear', align_corners=False)
+                medsam_seg_prob = self.torch.sigmoid(prev_masks)  # (B, 1, 64, 64, 64)
+                # convert prob to mask
+                medsam_seg_prob = medsam_seg_prob.cpu().detach().numpy().squeeze()
+                medsam_seg = (medsam_seg_prob > 0.5).astype(np.uint8)
+                self.mask = np.zeros(padded_data.shape)
+                self.mask[minpoints[0]:maxpoints[0],minpoints[1]:maxpoints[1],minpoints[2]:maxpoints[2]] = medsam_seg
+                self.mask = self.reverse_padd(pad_width)
+                self.pass_mask_to_slicer()
+            else:
+                self.undo()
         else:
-            self.undo()
+            if len(self.include_coords) != 0:
+                if self.slice_direction == 'Red':
+                    include_points = [[coords[2], coords[1]] for coords in self.include_coords.values()]
+                    exclude_points = [[coords[2], coords[1]] for coords in self.exclude_coords.values()]
+                    self.ind = int(list(self.include_coords.values())[0][0])
+                    img = self.img[int(list(self.include_coords.values())[0][0]),:,:]
+                    originalsize = (self.img.shape[1],self.img.shape[2])
+                elif self.slice_direction == 'Green':
+                    include_points = [[coords[2], coords[0]] for coords in self.include_coords.values()]
+                    exclude_points = [[coords[2], coords[0]] for coords in self.exclude_coords.values()]
+                    self.ind = int(list(self.include_coords.values())[0][1])
+                    img = self.img[:,int(list(self.include_coords.values())[0][1]),:]
+                    originalsize = (self.img.shape[0],self.img.shape[2])
+                else:  # Y
+                    include_points = [[coords[1], coords[0]] for coords in self.include_coords.values()]
+                    exclude_points = [[coords[1], coords[0]] for coords in self.exclude_coords.values()]
+                    self.ind = int(list(self.include_coords.values())[0][2])
+                    img = self.img[:,:,int(list(self.include_coords.values())[0][2])]
+                    originalsize = (self.img.shape[0],self.img.shape[1])
+            pad_width = [(max(0, target_shape[i] - img.shape[i]) // 2, max(0, target_shape[i] - img.shape[i]) // 2)for i in range(self.dimension)]
+            for i in range(0,self.dimension):
+                if pad_width[i][0] + pad_width[i][1] + img.shape[i] < target_shape[i]:
+                    l = list(pad_width[i])
+                    l[0] += 1
+                    pad_width[i] = l
+            offsets = [pad_width[i][0] for i in range(self.dimension)]
+            adjusted_include_points = [[coord + offset for coord, offset in zip(point, offsets)] for point in include_points]
+            adjusted_exclude_points = [[coord + offset for coord, offset in zip(point, offsets)] for point in exclude_points]
+            include_points = adjusted_include_points
+            exclude_points = adjusted_exclude_points
+            padded_data = np.pad(img, pad_width, 'constant')
+            minpoints,maxpoints = self.findboxcontainallpoints(include_points,exclude_points,padded_data)
+            inputimage = padded_data[minpoints[0]:maxpoints[0],minpoints[1]:maxpoints[1]]
+            inputimage = inputimage[np.newaxis,np.newaxis,:,:]
+            inputimage = self.torch.as_tensor(inputimage,dtype = self.torch.float32)
+            inputimage3 = self.torch.repeat_interleave(inputimage, repeats=3, dim=1)
+            offsets = [minpoints[i] for i in range(self.dimension)]
+            adjusted_include_points = [[coord - offset for coord, offset in zip(point, offsets)] for point in include_points]
+            adjusted_exclude_points = [[coord - offset for coord, offset in zip(point, offsets)] for point in exclude_points]
+            include_points = adjusted_include_points
+            exclude_points = adjusted_exclude_points
+            # if first_freeze:
+            #     self.backup_mask()
+            if len(self.include_coords) != 0:
+                prev_masks = self.torch.zeros_like(inputimage).to(self.device)
+                image_embedding = self.sam.image_encoder(inputimage3.to(self.device))
+                points = self.torch.as_tensor(np.array(include_points + exclude_points)).to(self.device)
+                points = points[None,:,:]
+                label = self.torch.as_tensor(np.array([1] * len(include_points) + [0] * len(exclude_points))).to(self.device)
+                label = label[None,:]
+                sparse_embeddings, dense_embeddings = self.sam.prompt_encoder(
+                        points=[points,label],
+                        boxes=None,
+                        masks = self.low_res_masks
+                    )
+                self.low_res_masks, _ = self.sam.mask_decoder(
+                        image_embeddings=image_embedding.to(self.device), # (B, 384, 64, 64, 64)
+                        image_pe=self.sam.prompt_encoder.get_dense_pe(), # (1, 384, 64, 64, 64)
+                        sparse_prompt_embeddings=sparse_embeddings, # (B, 2, 384)
+                        dense_prompt_embeddings=dense_embeddings, # (B, 384, 64, 64, 64)
+                        multimask_output=False,
+                        )
+                prev_masks = self.torch.nn.functional.interpolate(self.low_res_masks, (self.image_size, self.image_size), mode="bilinear", align_corners=False,)
+                med_masks = self.postprocess_masks(self.low_res_masks,self.image_size,originalsize)
+                med_masks = med_masks.cpu().detach().numpy().squeeze()
+                med_masks = med_masks > 0.5
+                new_mask = med_masks.astype(np.uint8)
+                new_mask = self.remove_small_regions(new_mask, self.min_mask_region_area, "holes")
+                new_mask = self.remove_small_regions(new_mask, self.min_mask_region_area, "islands")
+                self.backup_mask()
+                if self.slice_direction == 'Red':
+                    self.mask[self.ind] = new_mask
+                elif self.slice_direction == 'Green':
+                    self.mask[:, self.ind] = new_mask
+                else:
+                    self.mask[:, :, self.ind] = new_mask
+                self.pass_mask_to_slicer()
+            else:
+                self.undo()
+            
+    def postprocess_masks(self,low_res_masks, image_size, original_size):
+        masks = self.torch.nn.functional.interpolate(
+            low_res_masks,
+            (image_size, image_size),
+            mode="bilinear",
+            align_corners=False,
+            )
+        masks = self.torch.nn.functional.interpolate(masks, original_size, mode="bilinear", align_corners=False)
+        return masks  
+         
     def backup_mask(self):
         self.mask = slicer.util.arrayFromSegmentBinaryLabelmap(self._parameterNode.GetNodeReference("fastsamSegmentation"),
                                                                self._parameterNode.GetParameter("fastsamCurrentSegment"))
-        self.mask_backup = self.mask.copy()
 
     def undo(self):
         if self.mask_backup is not None:
