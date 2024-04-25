@@ -34,7 +34,7 @@ Why FastSAM3D and FastSAM3D_slicer?
 Make sure you have more than 3GB storage to download model weights and install pytorch.
 Don't forget to use the provided resample.py file to do resample for medical image. 
 ## How to Use <a name="how-to-use"></a>
-step 1: Download the file and compress it, rename the compress file to fastsam3d.
+step 1: Download the file and compress it.
 
 step 2: open the 3D slicer and open the extension manager, download the pytorch extension, and restart the slicer.
 ![step21](utils/step21.PNG)

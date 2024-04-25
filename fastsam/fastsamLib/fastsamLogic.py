@@ -193,6 +193,13 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
                                                          self._parameterNode.GetNodeReference("fastsamSegmentation"),
                                                          self._parameterNode.GetParameter("fastsamCurrentSegment"),
                                                          self._parameterNode.GetNodeReference("fastsamInputVolume"))
+    
+    def pass_logitsmask_to_slicer(self):
+        slicer.util.updateSegmentBinaryLabelmapFromArray(self.logitsmask,
+                                                    self._parameterNode.GetNodeReference("fastsamSegmentation"),
+                                                    self._parameterNode.GetParameter("fastsamCurrentSegment"),
+                                                    self._parameterNode.GetNodeReference("fastsamInputVolume"))
+    
     def findboxcontainallpoints(self,include_coords,exclude_coords,padded_data):
         minpoints = []
         maxpoints = []
@@ -281,6 +288,10 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
                 self.mask = np.zeros(padded_data.shape)
                 self.mask[minpoints[0]:maxpoints[0],minpoints[1]:maxpoints[1],minpoints[2]:maxpoints[2]] = medsam_seg
                 self.mask = self.reverse_padd(pad_width)
+                self.logitsmask = np.zeros(padded_data.shape)
+                self.logitsmask[minpoints[0]:maxpoints[0],minpoints[1]:maxpoints[1],minpoints[2]:maxpoints[2]] = medsam_seg_prob
+                self.logitsmask = self.reverse_padd(pad_width)
+                print(np.unique(self.logitsmask))
                 self.pass_mask_to_slicer()
             else:
                 self.undo()
@@ -349,18 +360,27 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
                         )
                 prev_masks = self.torch.nn.functional.interpolate(self.low_res_masks, (self.image_size, self.image_size), mode="bilinear", align_corners=False,)
                 med_masks = self.postprocess_masks(self.low_res_masks,self.image_size,originalsize)
+                med_masks = self.torch.sigmoid(med_masks)
+                self.backup_mask()
                 med_masks = med_masks.cpu().detach().numpy().squeeze()
+                if self.slice_direction == 'Red':
+                    self.logitsmask[self.ind] = med_masks 
+                elif self.slice_direction == 'Green':
+                    self.logitsmask[:, self.ind] = med_masks 
+                else:
+                    self.logitsmask[:, :, self.ind] = med_masks 
                 med_masks = med_masks > 0.5
                 new_mask = med_masks.astype(np.uint8)
                 new_mask = self.remove_small_regions(new_mask, self.min_mask_region_area, "holes")
                 new_mask = self.remove_small_regions(new_mask, self.min_mask_region_area, "islands")
-                self.backup_mask()
+                
                 if self.slice_direction == 'Red':
                     self.mask[self.ind] = new_mask
                 elif self.slice_direction == 'Green':
                     self.mask[:, self.ind] = new_mask
                 else:
                     self.mask[:, :, self.ind] = new_mask
+                print(np.unique(self.logitsmask))
                 self.pass_mask_to_slicer()
             else:
                 self.undo()
@@ -378,6 +398,8 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
     def backup_mask(self):
         self.mask = slicer.util.arrayFromSegmentBinaryLabelmap(self._parameterNode.GetNodeReference("fastsamSegmentation"),
                                                                self._parameterNode.GetParameter("fastsamCurrentSegment"))
+        self.logitsmask = slicer.util.arrayFromSegmentBinaryLabelmap(self._parameterNode.GetNodeReference("fastsamSegmentation"),
+                                                        self._parameterNode.GetParameter("fastsamCurrentSegment"))
 
     def undo(self):
         if self.mask_backup is not None:

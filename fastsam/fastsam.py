@@ -105,18 +105,20 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         # push buttons
         self.ui.pushSAMweights.connect("clicked(bool)", self.onPushSAMweights)
         self.ui.pushSAMweights.setToolTip(f"Download SAM weights to {self.Fastsam3D_weights_path}")
-        self.ui.pushMaskAccept.connect("clicked(bool)", self.onPushMaskAccept)
-        self.ui.pushMaskClear.connect("clicked(bool)", self.onPushMaskClear)
+        # self.ui.pushMaskAccept.connect("clicked(bool)", self.onPushMaskAccept)
+        # self.ui.pushMaskClear.connect("clicked(bool)", self.onPushMaskClear)
         self.ui.pushSegmentAdd.connect("clicked(bool)", self.onPushSegmentAdd)
         self.ui.pushSegmentRemove.connect("clicked(bool)", self.onPushSegmentRemove)
         # self.ui.pushCenter3d.connect("clicked(bool)", self.onPushCenter3d)
         # self.ui.pushVisualizeSlice3d.connect("clicked(bool)", self.onPushVisualizeSlice3d)
-        self.ui.pushInitializeInterp.connect("clicked(bool)", self.onPushInitializeInterp)
-        self.ui.pushUndo.connect("clicked(bool)", self.onPushUndo)
+        # self.ui.pushInitializeInterp.connect("clicked(bool)", self.onPushInitializeInterp)
+        # self.ui.pushUndo.connect("clicked(bool)", self.onPushUndo)
         self.ui.radioButton_FastSAM3D.connect("clicked(bool)", self.buildFastSAM3D)
         self.ui.radioButton_SAMMed3D.connect("clicked(bool)", self.buildSAMMed3D)
         self.ui.radioButton_SAMMed2D.connect("clicked(bool)", self.buildSAMMed2D)
         self.ui.radioButton_MedSAM.connect("clicked(bool)", self.buildMedSAM)
+        self.ui.radioButton_binaryview.connect("clicked(bool)", self.binarymaskdisplay)
+        self.ui.radioButton_logitsview.connect("clicked(bool)", self.logitsmaskdisplay)
 
         shortcuts = [
             ("i", lambda: self.activateIncludePoints()),
@@ -506,6 +508,15 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.logic.dimension = 2
         self.logic.image_size = 1024
         self.logic.create_sam(self.MedSAM_weights_path, "MedSAM")
+    
+    def setlogitsview(self):
+        self.logic.view = "logits"
+        
+    def logitsmaskdisplay(self):
+        self.logic.pass_logitsmask_to_slicer()
+        
+    def binarymaskdisplay(self):
+        self.logic.pass_mask_to_slicer()
     
     def checkSAM(self):
         if self.logic.sam is None:
