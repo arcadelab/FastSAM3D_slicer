@@ -117,8 +117,9 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
         self.ui.radioButton_SAMMed3D.connect("clicked(bool)", self.buildSAMMed3D)
         self.ui.radioButton_SAMMed2D.connect("clicked(bool)", self.buildSAMMed2D)
         self.ui.radioButton_MedSAM.connect("clicked(bool)", self.buildMedSAM)
-        self.ui.radioButton_binaryview.connect("clicked(bool)", self.binarymaskdisplay)
-        self.ui.radioButton_logitsview.connect("clicked(bool)", self.logitsmaskdisplay)
+        self.ui.selfensembling.connect("clicked(bool)", self.selfensembling)
+        # self.ui.radioButton_binaryview.connect("clicked(bool)", self.binarymaskdisplay)
+        # self.ui.radioButton_logitsview.connect("clicked(bool)", self.logitsmaskdisplay)
 
         shortcuts = [
             ("i", lambda: self.activateIncludePoints()),
@@ -321,6 +322,19 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def onMarkupExcludePointPositionUndefined(self, caller, event):
         self.removePoint(caller, self.logic.exclude_coords, 'exclude')
 
+    def selfensembling(self):
+        segmentationNode = slicer.mrmlScene.AddNewNodeByClass('vtkMRMLSegmentationNode', 'selfensembling')
+        self.ui.segmentSelector.setCurrentNode(segmentationNode)
+        self.ui.segmentsTable.setSegmentationNode(segmentationNode)
+        self._parameterNode.SetNodeReferenceID("fastsamselfensembling", segmentationNode.GetID())
+        segmentationNode.CreateDefaultDisplayNodes()
+        self.logic.selfensembling()
+        # slicer.mrmlScene.AddNode(self.segmentEditorNode)
+        # self.segmentEditorWidget.setMRMLSegmentEditorNode(self.segmentEditorNode)
+        # self.segmentEditorWidget.setSegmentationNode(self._parameterNode.GetNodeReference("fastsamselfensembling"))
+        # self.segmentEditorWidget.setSourceVolumeNode(self._parameterNode.GetNodeReference("fastsamInputVolume"))
+        # self.segmentEditorWidget.setActiveEffectByName("Fill between slices")
+
     def addPoint(self, caller, stored_coords):
         self.logic.generateaffine()
         point_index = caller.GetDisplayNode().GetActiveControlPoint()
@@ -456,7 +470,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             urllib.request.urlretrieve(url, self.SAMMed3D_weights_path)
             print("Done")
         else:
-            slicer.util.infoDisplay(f"MedSAM3D weights already found at {self.SAMMed3D_weights_path}")
+            slicer.util.infoDisplay(f"SAMMed3D weights already found at {self.SAMMed3D_weights_path}")
         
         if self.checkMedSAMdownload():
             slicer.util.delayDisplay(f"Downloading MedSAM weights to {self.MedSAM_weights_path}")
@@ -465,16 +479,16 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             urllib.request.urlretrieve(url, self.MedSAM_weights_path)
             print("Done")
         else:
-            slicer.util.infoDisplay(f"MedSAM3D weights already found at {self.MedSAM_weights_path}")
+            slicer.util.infoDisplay(f"MedSAM weights already found at {self.MedSAM_weights_path}")
         
         if self.checkSAMMed2Ddownload():
             slicer.util.delayDisplay(f"Downloading MedSAM weights to {self.SAMMed2D_weights_path}")
-            print("Downloading MedSAM weights ... ", end='')
+            print("Downloading SAMMed2D weights ... ", end='')
             url = "https://www.googleapis.com/drive/v3/files/1ARiB5RkSsWmAB_8mqWnwDF8ZKTtFwsjl?alt=media&key=AIzaSyDIQ5koL_iOuj5vIxaRKtUwba70-DH5nTc"
             urllib.request.urlretrieve(url, self.SAMMed2D_weights_path)
             print("Done")
         else:
-            slicer.util.infoDisplay(f"MedSAM3D weights already found at {self.SAMMed2D_weights_path}")
+            slicer.util.infoDisplay(f"SAMMed2D weights already found at {self.SAMMed2D_weights_path}")
             
 
     def checkFastSAMdownload(self):
@@ -523,7 +537,7 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
             if self.checkFastSAMdownload():
                 slicer.util.errorDisplay("SAM weights not found, use Download button")
                 return False
-            self.logic.create_sam(self.Fastsam3D_weights_path,'vit_b_ori')
+            self.logic.create_sam(self.Fastsam3D_weights_path,'FastSAM3D')
         return True
 
     # def checkEmbeddings(self):
