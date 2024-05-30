@@ -516,11 +516,13 @@ class fastsamWidget(ScriptedLoadableModuleWidget, VTKObservationMixin):
     def buildSAMMed2D(self):
         self.logic.dimension = 2
         self.logic.image_size = 256
+        self.logic.low_res_masks = None
         self.logic.create_sam(self.SAMMed2D_weights_path, "SAMMed2D")
     
     def buildMedSAM(self):
         self.logic.dimension = 2
         self.logic.image_size = 1024
+        self.logic.low_res_masks = None
         self.logic.create_sam(self.MedSAM_weights_path, "MedSAM")
     
     def setlogitsview(self):

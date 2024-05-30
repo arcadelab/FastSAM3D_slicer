@@ -466,15 +466,15 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
                     # mask = self.reverse_padd(pad_width)
                 medsam_seg_prob = medsam_seg_prob / self.selfensemblingnumber
                 medsam_seg_prob = medsam_seg_prob.cpu().detach().numpy().squeeze()
-                colors = [ (25,0,0),
-                            (50, 0, 0),
-                            (75, 0, 0),
-                            (100, 0, 0),
-                            (125, 0, 0),
-                            (150, 0, 0),
-                            (175, 0, 0),
-                            (200, 0,0),
-                            (225, 0, 0)]
+                colors = [ (250, 250, 210),
+                          (200, 200, 235),
+                          (48, 129, 126),
+                          (144,238, 144),
+                          (128,174,128),
+                            (145, 30, 0),
+                            (185, 102, 83),
+                            (216, 101, 79),
+                            (145, 60,66)]
                 # a = ((medsam_seg_prob > 0.9) & (medsam_seg_prob <= 1.0)).astype(np.uint8)
                 # b = ((medsam_seg_prob > 0.8) & (medsam_seg_prob <= 0.9)).astype(np.uint8)
                 # print((a != b).all())
@@ -586,8 +586,6 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
         
     def get_next_click3D_torch_2(self, gt_semantic_seg):
 
-        mask_threshold = 0.5
-
         batch_points = []
         # dice_list = []
 
@@ -598,18 +596,18 @@ class fastsamLogic(ScriptedLoadableModuleLogic):
         batch_points = self.torch.as_tensor(np.array(batch_points)).to(self.device)
         batch_labels = self.torch.as_tensor(np.array([1])).to(self.device)
         return batch_points, batch_labels
-    def generaterandompoints(self, point):
-        if (self.dimension == 3):
-            x = random.randint(0,self.image_size)
-            y = random.randint(0,self.image_size)
-            z = random.randint(0,self.image_size)
-            p = [[x,y,z]]
-            return self.torch.as_tensor(np.array(p)).to(self.device)
-        else :
-            x = random.randint(0,self.image_size)
-            y = random.randint(0,self.image_size)
-            p = [[x,y]]
-            return self.torch.as_tensor(np.array(p)).to(self.device)
+    # def generaterandompoints(self, point):
+    #     if (self.dimension == 3):
+    #         x = random.randint(0,self.image_size)
+    #         y = random.randint(0,self.image_size)
+    #         z = random.randint(0,self.image_size)
+    #         p = [[x,y,z]]
+    #         return self.torch.as_tensor(np.array(p)).to(self.device)
+    #     else :
+    #         x = random.randint(0,self.image_size)
+    #         y = random.randint(0,self.image_size)
+    #         p = [[x,y]]
+    #         return self.torch.as_tensor(np.array(p)).to(self.device)
         
     def postprocess_masks(self,low_res_masks, image_size, original_size):
         masks = self.torch.nn.functional.interpolate(
