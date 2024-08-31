@@ -1,4 +1,4 @@
-# Fast Segment Anything Model in 3D Medical Image (FastSAM3D): A 3D Slicer Extension for FastSAM3D
+# FastSAM-3DSlicer: A 3D-Slicer Extension for 3D Volumetric Segment Anything Model with Uncertainty Quantification
 
 [paper](https://arxiv.org/abs/2403.09827)
 \
@@ -66,6 +66,13 @@ If you use FastSAM3D_slicer in your research, please consider use the following 
       eprint={2403.09827},
       archivePrefix={arXiv},
       primaryClass={eess.IV}
+}
+
+@article{shen2024fastsam,
+  title={FastSAM-3DSlicer: A 3D-Slicer Extension for 3D Volumetric Segment Anything Model with Uncertainty Quantification},
+  author={Shen, Yiqing and Shao, Xinyuan and Romillo, Blanca Inigo and Dreizin, David and Unberath, Mathias},
+  journal={arXiv preprint arXiv:2407.12658},
+  year={2024}
 }
 ```
 
